@@ -31,26 +31,35 @@
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
     <div class="bg-card rounded-lg shadow-lg p-5">
         <p class="text-xs text-muted-foreground mb-1">Total Pemasukan</p>
-        <p id="total-income" class="text-2xl font-bold text-green-500">Rp 0</p>
+        <div id="total-income-skel" class="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <p id="total-income" class="text-2xl font-bold text-green-500 hidden">Rp 0</p>
     </div>
     <div class="bg-card rounded-lg shadow-lg p-5">
         <p class="text-xs text-muted-foreground mb-1">Total Pengeluaran</p>
-        <p id="total-expense" class="text-2xl font-bold text-red-500">Rp 0</p>
+        <div id="total-expense-skel" class="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <p id="total-expense" class="text-2xl font-bold text-red-500 hidden">Rp 0</p>
     </div>
     <div class="bg-card rounded-lg shadow-lg p-5">
         <p class="text-xs text-muted-foreground mb-1">Saldo Bersih</p>
-        <p id="net-savings" class="text-2xl font-bold text-blue-500">Rp 0</p>
+        <div id="net-savings-skel" class="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <p id="net-savings" class="text-2xl font-bold text-blue-500 hidden">Rp 0</p>
     </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="bg-card rounded-lg shadow-lg p-5">
         <h3 class="font-semibold mb-4">Tren Bulanan</h3>
-        <div class="h-72"><canvas id="chart-trend"></canvas></div>
+        <div class="h-72 relative">
+            <div id="chart-trend-loader" class="absolute inset-0 flex items-center justify-center"><x-spinner class="w-8 h-8 text-muted-foreground" /></div>
+            <canvas id="chart-trend"></canvas>
+        </div>
     </div>
     <div class="bg-card rounded-lg shadow-lg p-5">
         <h3 class="font-semibold mb-4">Distribusi Pengeluaran</h3>
-        <div class="h-72"><canvas id="chart-category"></canvas></div>
+        <div class="h-72 relative">
+            <div id="chart-cat-loader" class="absolute inset-0 flex items-center justify-center"><x-spinner class="w-8 h-8 text-muted-foreground" /></div>
+            <canvas id="chart-category"></canvas>
+        </div>
     </div>
 </div>
 @endsection
@@ -67,25 +76,44 @@ async function loadData() {
     const now = new Date();
     let month = now.getMonth() + 1, year = now.getFullYear();
 
+    if (period === 'week') {
+        const start = new Date(now); start.setDate(now.getDate() - 7);
+        month = start.getMonth() + 1; year = start.getFullYear();
+    } else if (period === 'year') {
+        month = 0;
+    }
+
     try {
-        const res = await Finarus.api(`/api/reports/monthly?month=${month}&year=${year}`);
+        const res = await fetch(`{{ url('laporan/data/monthly') }}?month=${month}&year=${year}`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': Finarus.csrf() }
+        });
         const d = await res.json();
         document.getElementById('total-income').textContent = Finarus.formatRupiah(d.total_income || 0);
         document.getElementById('total-expense').textContent = Finarus.formatRupiah(d.total_expense || 0);
         document.getElementById('net-savings').textContent = Finarus.formatRupiah(d.balance || 0);
-    } catch(e) { console.error(e); }
+        document.getElementById('total-income').classList.remove('hidden');
+        document.getElementById('total-expense').classList.remove('hidden');
+        document.getElementById('net-savings').classList.remove('hidden');
+        document.getElementById('total-income-skel').classList.add('hidden');
+        document.getElementById('total-expense-skel').classList.add('hidden');
+        document.getElementById('net-savings-skel').classList.add('hidden');
+    } catch(e) { Finarus.toast('Gagal memuat ringkasan', 'error'); }
 
     try {
-        const resCat = await Finarus.api(`/api/reports/categories?type=expense&month=${month}&year=${year}`);
+        const resCat = await fetch(`{{ url('laporan/data/categories') }}?type=expense&month=${month}&year=${year}`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': Finarus.csrf() }
+        });
         const catData = await resCat.json();
         renderCategoryChart(catData.categories || []);
-    } catch(e) { console.error(e); }
+    } catch(e) { Finarus.toast('Gagal memuat kategori', 'error'); }
 
     try {
-        const resTrend = await Finarus.api(`/api/reports/trend?year=${year}`);
+        const resTrend = await fetch(`{{ url('laporan/data/trend') }}?year=${year}`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': Finarus.csrf() }
+        });
         const trendData = await resTrend.json();
         renderTrendChart(trendData.trend || []);
-    } catch(e) { console.error(e); }
+    } catch(e) { Finarus.toast('Gagal memuat tren', 'error'); }
 }
 
 function renderTrendChart(data) {
@@ -109,6 +137,7 @@ function renderTrendChart(data) {
             plugins: { legend: { labels: { color: chartTextColor() } } }
         }
     });
+    document.getElementById('chart-trend-loader').classList.add('hidden');
 }
 
 function renderCategoryChart(data) {
@@ -128,6 +157,7 @@ function renderCategoryChart(data) {
             }
         }
     });
+    document.getElementById('chart-cat-loader').classList.add('hidden');
 }
 
 async function exportReport(format) {
@@ -136,7 +166,9 @@ async function exportReport(format) {
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
     try {
-        const res = await Finarus.api(`/api/reports/export?format=${format}&month=${month}&year=${year}`);
+        const res = await fetch(`{{ url('laporan/export') }}?format=${format}&month=${month}&year=${year}`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': Finarus.csrf() }
+        });
         if (res.ok) {
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -154,5 +186,7 @@ async function exportReport(format) {
 
 document.addEventListener('DOMContentLoaded', loadData);
 Finarus.onThemeChange(() => { loadData(); });
+    document.getElementById('chart-trend-loader').classList.add('hidden');
+    document.getElementById('chart-cat-loader').classList.add('hidden');
 </script>
 @endpush

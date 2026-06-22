@@ -12,46 +12,56 @@
 @endsection
 
 @section('content')
+<div x-data="{ openCash: false, openEwallet: false, openBank: false }" class="space-y-3 md:space-y-4">
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-    <div class="bg-primary text-primary-foreground p-5 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out">
-        <div class="flex items-start justify-between mb-4">
-            <h3 class="text-xs font-semibold opacity-90 tracking-wider">Saldo Total</h3>
-            <div class="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
-                <svg class="w-4 h-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+    <div class="bg-card text-foreground p-5 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out">
+        <div class="flex items-start justify-between mb-3 cursor-pointer" @click="openCash = !openCash">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                <div><h3 class="text-xs font-semibold opacity-90 tracking-wider">💵 Cash</h3><p class="text-2xl sm:text-3xl font-bold">Rp {{ number_format($cashBalance,0,',','.') }}</p></div>
             </div>
+            <svg :class="openCash && 'rotate-180'" class="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </div>
-        <p class="text-2xl sm:text-3xl font-bold mb-3">Rp {{ number_format($balance, 0, ',', '.') }}</p>
-        <div class="flex items-center gap-1.5 text-xs opacity-80">
-            <svg class="w-3 h-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            <span>Total saldo dari semua akun</span>
-        </div>
-    </div>
-
-    <div class="bg-secondary text-secondary-foreground p-5 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out">
-        <div class="flex items-start justify-between mb-4">
-            <h3 class="text-xs font-semibold opacity-90 tracking-wider">Pemasukan Bulan Ini</h3>
-            <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
-        </div>
-        <p class="text-2xl sm:text-3xl font-bold mb-3">Rp {{ number_format($totalIncome, 0, ',', '.') }}</p>
-        <div class="flex items-center gap-1.5 text-xs opacity-80">
-            <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            <span>Pemasukan bulan ini</span>
+        <div x-show="openCash" x-transition class="space-y-1 mt-2">
+            @forelse($cashAccounts as $a)
+            <div class="flex justify-between text-xs py-1 border-b border-border last:border-0"><span class="text-muted-foreground">{{ $a->name }}</span><span class="font-medium">Rp {{ number_format($a->balance,0,',','.') }}</span></div>
+            @empty
+            <p class="text-xs text-muted-foreground">Tidak ada akun cash</p>
+            @endforelse
         </div>
     </div>
 
     <div class="bg-card text-foreground p-5 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out">
-        <div class="flex items-start justify-between mb-4">
-            <h3 class="text-xs font-semibold opacity-90 tracking-wider">Pengeluaran Bulan Ini</h3>
-            <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 14l-1-1H7m0 0L5 9m0 0l7-4 7 4m-9 3l-5-3"></path></svg>
+        <div class="flex items-start justify-between mb-3 cursor-pointer" @click="openEwallet = !openEwallet">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>
+                <div><h3 class="text-xs font-semibold opacity-90 tracking-wider">📱 E-Wallet</h3><p class="text-2xl sm:text-3xl font-bold">Rp {{ number_format($ewalletBalance,0,',','.') }}</p></div>
             </div>
+            <svg :class="openEwallet && 'rotate-180'" class="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </div>
-        <p class="text-2xl sm:text-3xl font-bold mb-3">Rp {{ number_format($totalExpense, 0, ',', '.') }}</p>
-        <div class="flex items-center gap-1.5 text-xs opacity-80">
-            <svg class="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 14l1 1h6m0 0l2-3m0 0l-7 4-7-4m9-3l5 3"></path></svg>
-            <span>Pengeluaran bulan ini</span>
+        <div x-show="openEwallet" x-transition class="space-y-1 mt-2">
+            @forelse($ewalletAccounts as $a)
+            <div class="flex justify-between text-xs py-1 border-b border-border last:border-0"><span class="text-muted-foreground">{{ $a->name }}</span><span class="font-medium">Rp {{ number_format($a->balance,0,',','.') }}</span></div>
+            @empty
+            <p class="text-xs text-muted-foreground">Tidak ada akun e-wallet</p>
+            @endforelse
+        </div>
+    </div>
+
+    <div class="bg-card text-foreground p-5 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out">
+        <div class="flex items-start justify-between mb-3 cursor-pointer" @click="openBank = !openBank">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div>
+                <div><h3 class="text-xs font-semibold opacity-90 tracking-wider">🏦 Bank</h3><p class="text-2xl sm:text-3xl font-bold">Rp {{ number_format($bankBalance,0,',','.') }}</p></div>
+            </div>
+            <svg :class="openBank && 'rotate-180'" class="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </div>
+        <div x-show="openBank" x-transition class="space-y-1 mt-2">
+            @forelse($bankAccounts as $a)
+            <div class="flex justify-between text-xs py-1 border-b border-border last:border-0"><span class="text-muted-foreground">{{ $a->name }}</span><span class="font-medium {{ $a->type==='credit_card'?'text-red-500':'' }}">Rp {{ number_format($a->balance,0,',','.') }}</span></div>
+            @empty
+            <p class="text-xs text-muted-foreground">Tidak ada akun bank</p>
+            @endforelse
         </div>
     </div>
 
@@ -63,9 +73,18 @@
             </div>
         </div>
         <p class="text-2xl sm:text-3xl font-bold mb-3">{{ $activeSavingGoals }}</p>
-        <div class="flex items-center gap-1.5 text-xs opacity-80">
-            <span>Berjalan lancar</span>
-        </div>
+        <div class="flex items-center gap-1.5 text-xs opacity-80"><span>Berjalan lancar</span></div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="bg-card text-foreground p-4 rounded-lg shadow flex items-center justify-between">
+        <div><h3 class="text-xs text-muted-foreground tracking-wider">Pemasukan Bulan Ini</h3><p class="text-xl font-bold text-green-500">Rp {{ number_format($totalIncome,0,',','.') }}</p></div>
+        <svg class="w-5 h-5 text-green-500/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8L5.343 18.657a2 2 0 01-2.828 0l-1.414-1.414a2 2 0 010-2.828L16.172 3"></path></svg>
+    </div>
+    <div class="bg-card text-foreground p-4 rounded-lg shadow flex items-center justify-between">
+        <div><h3 class="text-xs text-muted-foreground tracking-wider">Pengeluaran Bulan Ini</h3><p class="text-xl font-bold text-red-500">Rp {{ number_format($totalExpense,0,',','.') }}</p></div>
+        <svg class="w-5 h-5 text-red-500/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17H5v8h14v-8h-6"></path></svg>
     </div>
 </div>
 

@@ -16,7 +16,7 @@ class StoreAccountRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'provider' => 'required|string|max:255',
-            'type' => 'required|in:ewallet,bank,credit_card',
+            'type' => 'required|in:cash,ewallet,bank,credit_card',
             'account_number' => 'nullable|string|max:100',
             'balance' => 'nullable|numeric|min:0',
             'logo' => 'nullable|string|max:100',

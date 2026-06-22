@@ -9,8 +9,11 @@ use App\Models\SavingGoal;
 use App\Models\Transaction;
 use App\Models\UserSetting;
 use App\Models\UserOAuthToken;
+use App\Services\ReportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class WebPageController extends Controller
@@ -18,6 +21,8 @@ class WebPageController extends Controller
     public function dashboard(): View
     {
         $user = Auth::user();
+
+        $this->ensureCashAccount($user);
 
         $totalIncome = $user->transactions()
             ->where('type', 'income')
@@ -32,6 +37,13 @@ class WebPageController extends Controller
             ->sum('amount');
 
         $balance = $user->accounts()->sum('balance');
+        $cashBalance = $user->accounts()->where('type', 'cash')->sum('balance');
+        $ewalletBalance = $user->accounts()->where('type', 'ewallet')->sum('balance');
+        $bankBalance = $user->accounts()->whereIn('type', ['bank', 'credit_card'])->sum('balance');
+
+        $cashAccounts = $user->accounts()->where('type', 'cash')->orderBy('name')->get();
+        $ewalletAccounts = $user->accounts()->where('type', 'ewallet')->orderBy('name')->get();
+        $bankAccounts = $user->accounts()->whereIn('type', ['bank', 'credit_card'])->orderBy('name')->get();
 
         $activeSavingGoals = $user->savingGoals()
             ->whereColumn('current_amount', '<', 'target_amount')
@@ -53,7 +65,9 @@ class WebPageController extends Controller
         $budgetAlerts = $budgetProgress->filter(fn($b) => $b->is_over_budget || $b->progress >= 80)->values();
 
         return view('app.dashboard', compact(
-            'balance', 'totalIncome', 'totalExpense',
+            'balance', 'cashBalance', 'ewalletBalance', 'bankBalance',
+            'cashAccounts', 'ewalletAccounts', 'bankAccounts',
+            'totalIncome', 'totalExpense',
             'activeSavingGoals', 'recentTransactions', 'budgetProgress', 'budgetAlerts'
         ));
     }
@@ -115,8 +129,9 @@ class WebPageController extends Controller
     {
         $user = Auth::user();
         $savingGoals = $user->savingGoals()->orderBy('deadline')->get();
+        $accounts = $user->accounts()->orderBy('name')->get();
 
-        return view('app.tabungan.index', compact('savingGoals'));
+        return view('app.tabungan.index', compact('savingGoals', 'accounts'));
     }
 
     public function laporan(): View
@@ -127,7 +142,7 @@ class WebPageController extends Controller
     public function dompetDigital(): View
     {
         $user = Auth::user();
-        $accounts = $user->accounts()->orderBy('name')->get();
+        $accounts = $user->accounts()->where('type', '!=', 'cash')->orderBy('name')->get();
         $totalBalance = $accounts->sum('balance');
 
         return view('app.dompet-digital.index', compact('accounts', 'totalBalance'));
@@ -154,5 +169,60 @@ class WebPageController extends Controller
     public function bantuan(): View
     {
         return view('app.bantuan');
+    }
+
+    protected function ensureCashAccount($user): void
+    {
+        if (!$user->accounts()->where('type', 'cash')->exists()) {
+            $user->accounts()->create([
+                'name' => 'Cash / Dompet',
+                'provider' => 'Cash',
+                'type' => 'cash',
+                'balance' => 0,
+            ]);
+        }
+    }
+
+    public function reportMonthly(Request $request, ReportService $report): JsonResponse
+    {
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        return response()->json($report->getMonthlySummary($month, $year));
+    }
+
+    public function reportCategories(Request $request, ReportService $report): JsonResponse
+    {
+        $type = $request->input('type', 'expense');
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        return response()->json([
+            'categories' => $report->getCategoryBreakdown($type, $month, $year),
+        ]);
+    }
+
+    public function reportTrend(Request $request, ReportService $report): JsonResponse
+    {
+        $year = (int) $request->input('year', now()->year);
+        return response()->json(['trend' => $report->getMonthlyTrend($year)]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email_notifications' => 'nullable|boolean',
+            'budget_alerts' => 'nullable|boolean',
+            'email_fetch_enabled' => 'nullable|boolean',
+            'theme' => 'nullable|in:light,dark',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+        $settings = $user->settings ?? UserSetting::create(['user_id' => $user->id]);
+        $settings->update($validator->validated());
+
+        return response()->json(['message' => 'Tersimpan']);
     }
 }

@@ -16,7 +16,7 @@ class UpdateAccountRequest extends FormRequest
         return [
             'name' => 'sometimes|required|string|max:255',
             'provider' => 'sometimes|required|string|max:255',
-            'type' => 'sometimes|required|in:ewallet,bank,credit_card',
+            'type' => 'sometimes|required|in:cash,ewallet,bank,credit_card',
             'account_number' => 'nullable|string|max:100',
             'balance' => 'nullable|numeric|min:0',
             'logo' => 'nullable|string|max:100',

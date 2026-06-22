@@ -12,11 +12,11 @@
             <div class="space-y-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" {{ $settings->email_notifications ? 'checked' : '' }} class="rounded" onchange="updateSetting('email_notifications', this.checked)">
-                    <span class="text-sm">Notifikasi Transaksi</span>
+                    <span class="text-sm">Notifikasi Transaksi</span><span class="spinner-wrap hidden ml-1"><x-spinner class="w-3 h-3 inline text-muted-foreground" /></span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" {{ $settings->budget_alerts ? 'checked' : '' }} class="rounded" onchange="updateSetting('budget_alerts', this.checked)">
-                    <span class="text-sm">Notifikasi Anggaran</span>
+                    <span class="text-sm">Notifikasi Anggaran</span><span class="spinner-wrap hidden ml-1"><x-spinner class="w-3 h-3 inline text-muted-foreground" /></span>
                 </label>
             </div>
         </div>
@@ -27,7 +27,7 @@
             <h3 class="font-semibold mb-3">Tampilan</h3>
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" {{ $settings->theme === 'dark' ? 'checked' : '' }} class="rounded" onchange="toggleThemeFromSetting(this.checked)">
-                <span class="text-sm">Mode Gelap</span>
+                <span class="text-sm">Mode Gelap</span><span class="spinner-wrap hidden ml-1"><x-spinner class="w-3 h-3 inline text-muted-foreground" /></span>
             </label>
         </div>
 
@@ -74,30 +74,22 @@
                 @endif
                 <label class="flex items-center gap-2 mt-3 cursor-pointer">
                     <input type="checkbox" {{ $oauthFetchEnabled ? 'checked' : '' }} class="rounded" onchange="updateSetting('email_fetch_enabled', this.checked)">
-                    <span>Ambil transaksi bank/e-wallet otomatis</span>
+                    <span>Ambil transaksi bank/e-wallet otomatis</span><span class="spinner-wrap hidden ml-1"><x-spinner class="w-3 h-3 inline text-muted-foreground" /></span>
                 </label>
             </div>
             @else
             <p class="text-sm text-muted-foreground">Hubungkan akun Google untuk otomatis mencatat transaksi dari email bank & e-wallet Anda.</p>
             @endif
         </div>
-
-        <hr class="border-border">
-
-        <div class="flex justify-end gap-3">
-            <button class="h-9 px-4 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium">
-                Batal
-            </button>
-            <button class="h-9 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
-                Simpan
-            </button>
-        </div>
     </div>
 </div>
 
 <script>
 function updateSetting(key, value) {
-    fetch('/api/settings', {
+    var box = event.target;
+    box.disabled = true;
+    box.parentElement.querySelector('.spinner-wrap')?.classList.remove('hidden');
+    fetch('/pengaturan/settings', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -105,9 +97,13 @@ function updateSetting(key, value) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
         body: JSON.stringify({ [key]: value })
-    }).then(r => r.json()).then(data => {
-        console.log('Setting updated:', data);
-    }).catch(err => console.error(err));
+    }).then(r => r.json()).then(() => {
+        Finarus.toast('Pengaturan disimpan');
+    }).catch(() => Finarus.toast('Gagal menyimpan', 'error'))
+    .finally(() => {
+        box.disabled = false;
+        box.parentElement.querySelector('.spinner-wrap')?.classList.add('hidden');
+    });
 }
 
 function toggleThemeFromSetting(isDark) {

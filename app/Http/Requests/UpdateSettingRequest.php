@@ -16,6 +16,7 @@ class UpdateSettingRequest extends FormRequest
         return [
             'email_notifications' => 'nullable|boolean',
             'budget_alerts' => 'nullable|boolean',
+            'email_fetch_enabled' => 'nullable|boolean',
             'theme' => 'nullable|in:light,dark',
         ];
     }

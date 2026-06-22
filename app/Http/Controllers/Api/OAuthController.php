@@ -88,6 +88,13 @@ class OAuthController extends Controller
 
         UserSetting::create(['user_id' => $user->id]);
 
+        $user->accounts()->create([
+            'name' => 'Cash / Dompet',
+            'provider' => 'Cash',
+            'type' => 'cash',
+            'balance' => 0,
+        ]);
+
         Auth::login($user);
 
         Log::info('Google register + login', ['user_id' => $user->id]);

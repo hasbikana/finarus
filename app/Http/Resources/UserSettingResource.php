@@ -13,6 +13,7 @@ class UserSettingResource extends JsonResource
             'id' => $this->id,
             'email_notifications' => $this->email_notifications,
             'budget_alerts' => $this->budget_alerts,
+            'email_fetch_enabled' => $this->email_fetch_enabled,
             'theme' => $this->theme,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

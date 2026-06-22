@@ -19,7 +19,10 @@ use App\Models\SavingGoal;
 use App\Models\Account;
 use App\Services\TransactionService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class WebCrudController extends Controller
 {
@@ -105,6 +108,36 @@ class WebCrudController extends Controller
         return back()->with('success', 'Tujuan tabungan berhasil dihapus.');
     }
 
+    public function addFund(Request $request, SavingGoal $savingGoal): RedirectResponse
+    {
+        $this->authorize('update', $savingGoal);
+
+        $validated = $request->validate([
+            'account_id' => 'required|exists:accounts,id',
+            'amount' => 'required|numeric|gt:0',
+            'transaction_date' => 'required|date',
+        ]);
+
+        $user = Auth::user();
+
+        $category = Category::firstOrCreate(
+            ['user_id' => $user->id, 'name' => 'Tambah Tabungan'],
+            ['type' => 'expense', 'icon' => '💰', 'color' => '#6366f1']
+        );
+
+        $this->txnService->createTransaction([
+            'category_id' => $category->id,
+            'account_id' => $validated['account_id'],
+            'saving_goal_id' => $savingGoal->id,
+            'type' => 'expense',
+            'amount' => $validated['amount'],
+            'description' => 'Tambah dana: ' . $savingGoal->name,
+            'transaction_date' => $validated['transaction_date'],
+        ]);
+
+        return back()->with('success', 'Dana berhasil ditambahkan ke ' . $savingGoal->name . '!');
+    }
+
     public function storeDompet(StoreAccountRequest $req): RedirectResponse
     {
         Auth::user()->accounts()->create($req->validated());
@@ -126,5 +159,20 @@ class WebCrudController extends Controller
         }
         $account->delete();
         return back()->with('success', 'Akun berhasil dihapus.');
+    }
+
+    public function uploadFile(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ]);
+
+        $path = $request->file('file')->store('uploads', 'public');
+
+        return response()->json([
+            'message' => 'Upload berhasil',
+            'path' => $path,
+            'url' => Storage::url($path),
+        ]);
     }
 }

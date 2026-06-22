@@ -15,7 +15,7 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'category_id' => 'required|exists:categories,id',
-            'account_id' => 'nullable|exists:accounts,id',
+            'account_id' => 'required|exists:accounts,id',
             'saving_goal_id' => 'nullable|exists:saving_goals,id',
             'type' => 'required|in:income,expense',
             'amount' => 'required|numeric|gt:0',

@@ -15,7 +15,7 @@ class UpdateTransactionRequest extends FormRequest
     {
         return [
             'category_id' => 'sometimes|required|exists:categories,id',
-            'account_id' => 'nullable|exists:accounts,id',
+            'account_id' => 'sometimes|required|exists:accounts,id',
             'saving_goal_id' => 'nullable|exists:saving_goals,id',
             'type' => 'sometimes|required|in:income,expense',
             'amount' => 'sometimes|required|numeric|gt:0',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\OAuthController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebCrudController;
 use App\Http\Controllers\WebPageController;
@@ -46,10 +47,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/tabungan', [WebCrudController::class, 'storeTabungan'])->name('tabungan.store');
     Route::put('/tabungan/{savingGoal}', [WebCrudController::class, 'updateTabungan'])->name('tabungan.update');
     Route::delete('/tabungan/{savingGoal}', [WebCrudController::class, 'destroyTabungan'])->name('tabungan.destroy');
+    Route::post('/tabungan/{savingGoal}/add-fund', [WebCrudController::class, 'addFund'])->name('tabungan.add-fund');
 
     Route::post('/dompet', [WebCrudController::class, 'storeDompet'])->name('dompet.store');
     Route::put('/dompet/{account}', [WebCrudController::class, 'updateDompet'])->name('dompet.update');
     Route::delete('/dompet/{account}', [WebCrudController::class, 'destroyDompet'])->name('dompet.destroy');
+
+    Route::get('/laporan/data/monthly', [WebPageController::class, 'reportMonthly'])->name('laporan.monthly');
+    Route::get('/laporan/data/categories', [WebPageController::class, 'reportCategories'])->name('laporan.categories');
+    Route::get('/laporan/data/trend', [WebPageController::class, 'reportTrend'])->name('laporan.trend');
+    Route::get('/laporan/export', [ReportController::class, 'export'])->name('laporan.export');
+
+    Route::post('/upload', [WebCrudController::class, 'uploadFile'])->name('upload.file');
+
+    Route::put('/pengaturan/settings', [WebPageController::class, 'updateSettings'])->name('pengaturan.settings.update');
 });
 
 require __DIR__.'/auth.php';

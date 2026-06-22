@@ -45,6 +45,13 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
+        $user->accounts()->create([
+            'name' => 'Cash / Dompet',
+            'provider' => 'Cash',
+            'type' => 'cash',
+            'balance' => 0,
+        ]);
+
         Auth::login($user);
 
         return redirect(route('dashboard', absolute: false));
