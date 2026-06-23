@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\PendingNotification;
 use App\Models\SavingGoal;
 use App\Models\Transaction;
 use App\Models\UserSetting;
 use App\Models\UserOAuthToken;
 use App\Services\ReportService;
+use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -64,11 +67,16 @@ class WebPageController extends Controller
 
         $budgetAlerts = $budgetProgress->filter(fn($b) => $b->is_over_budget || $b->progress >= 80)->values();
 
+        $pendingCount = $user->pendingNotifications()
+            ->where('status', 'pending')
+            ->count();
+
         return view('app.dashboard', compact(
             'balance', 'cashBalance', 'ewalletBalance', 'bankBalance',
             'cashAccounts', 'ewalletAccounts', 'bankAccounts',
             'totalIncome', 'totalExpense',
-            'activeSavingGoals', 'recentTransactions', 'budgetProgress', 'budgetAlerts'
+            'activeSavingGoals', 'recentTransactions', 'budgetProgress', 'budgetAlerts',
+            'pendingCount'
         ));
     }
 
@@ -169,6 +177,61 @@ class WebPageController extends Controller
     public function bantuan(): View
     {
         return view('app.bantuan');
+    }
+
+    public function notifikasi(): View
+    {
+        $user = Auth::user();
+
+        $notifications = $user->pendingNotifications()
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(20);
+
+        $categories = $user->categories()->orderBy('name')->get();
+        $accounts = $user->accounts()->orderBy('name')->get();
+
+        return view('app.notifikasi.index', compact('notifications', 'categories', 'accounts'));
+    }
+
+    public function approveNotification(Request $request, PendingNotification $notification, TransactionService $transactionService): RedirectResponse
+    {
+        if ($notification->user_id !== Auth::id() || $notification->status !== 'pending') {
+            return back()->with('error', 'Notifikasi tidak valid');
+        }
+
+        $validated = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'account_id' => 'required|exists:accounts,id',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $transactionService->createTransaction([
+            'user_id' => Auth::id(),
+            'category_id' => $validated['category_id'],
+            'account_id' => $validated['account_id'],
+            'type' => $notification->type,
+            'amount' => $notification->amount,
+            'description' => $validated['description'] ?? $notification->merchant ?? $notification->description,
+            'transaction_date' => $notification->notification_date ?? now()->toDateString(),
+            'is_pending' => false,
+            'pending_source' => $notification->source,
+        ]);
+
+        $notification->update(['status' => 'confirmed']);
+
+        return redirect()->route('notifikasi')->with('success', 'Transaksi berhasil dibuat');
+    }
+
+    public function rejectNotification(Request $request, PendingNotification $notification): RedirectResponse
+    {
+        if ($notification->user_id !== Auth::id() || $notification->status !== 'pending') {
+            return back()->with('error', 'Notifikasi tidak valid');
+        }
+
+        $notification->update(['status' => 'rejected']);
+
+        return redirect()->route('notifikasi')->with('success', 'Notifikasi ditolak');
     }
 
     protected function ensureCashAccount($user): void

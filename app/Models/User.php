@@ -61,4 +61,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserOAuthToken::class);
     }
+
+    public function pendingNotifications(): HasMany
+    {
+        return $this->hasMany(PendingNotification::class);
+    }
 }

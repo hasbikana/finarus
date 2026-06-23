@@ -15,12 +15,14 @@ class ReportService
 
         $income = $user->transactions()
             ->where('type', 'income')
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->sum('amount');
 
         $expense = $user->transactions()
             ->where('type', 'expense')
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->sum('amount');
@@ -42,6 +44,7 @@ class ReportService
 
         return $user->transactions()
             ->where('type', $type)
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->with('category')
@@ -63,6 +66,7 @@ class ReportService
         $user = Auth::user();
 
         $transactions = $user->transactions()
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
             ->whereYear('transaction_date', $year)
             ->selectRaw('MONTH(transaction_date) as month, type, SUM(amount) as total')
             ->groupBy('month', 'type')

@@ -21,6 +21,7 @@ class StoreTransactionRequest extends FormRequest
             'amount' => 'required|numeric|gt:0',
             'description' => 'nullable|string|max:1000',
             'transaction_date' => 'required|date',
+            'pending_source' => 'nullable|string|in:manual,push_notif,ocr',
         ];
     }
 }

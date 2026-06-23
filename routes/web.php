@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dompet-digital', [WebPageController::class, 'dompetDigital'])->name('dompet-digital');
     Route::get('/pengaturan', [WebPageController::class, 'pengaturan'])->name('pengaturan');
     Route::get('/bantuan', [WebPageController::class, 'bantuan'])->name('bantuan');
+    Route::get('/notifikasi', [WebPageController::class, 'notifikasi'])->name('notifikasi');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -61,6 +62,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/upload', [WebCrudController::class, 'uploadFile'])->name('upload.file');
 
     Route::put('/pengaturan/settings', [WebPageController::class, 'updateSettings'])->name('pengaturan.settings.update');
+
+    Route::patch('/notifikasi/{pendingNotification}/approve', [WebPageController::class, 'approveNotification'])->name('notifikasi.approve');
+    Route::delete('/notifikasi/{pendingNotification}/reject', [WebPageController::class, 'rejectNotification'])->name('notifikasi.reject');
 });
 
 require __DIR__.'/auth.php';

@@ -22,6 +22,10 @@ class TransactionController extends Controller
     {
         $query = $request->user()->transactions()->with(['category', 'account', 'savingGoal']);
 
+        $query->where(function ($q) {
+            $q->where('is_pending', false)->orWhereNull('is_pending');
+        });
+
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
@@ -55,7 +59,11 @@ class TransactionController extends Controller
 
     public function store(StoreTransactionRequest $request): JsonResponse
     {
-        $transaction = $this->transactionService->createTransaction($request->validated());
+        $data = $request->validated();
+        $data['is_pending'] = false;
+        $data['pending_source'] = $request->pending_source ?? 'manual';
+
+        $transaction = $this->transactionService->createTransaction($data);
 
         return response()->json([
             'message' => 'Transaksi berhasil dibuat',
@@ -90,6 +98,59 @@ class TransactionController extends Controller
 
         return response()->json([
             'message' => 'Transaksi berhasil dihapus',
+        ]);
+    }
+
+    public function pending(Request $request): AnonymousResourceCollection
+    {
+        $transactions = $request->user()->transactions()
+            ->with(['category', 'account', 'savingGoal'])
+            ->where('is_pending', true)
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->per_page ?? 15);
+
+        return TransactionResource::collection($transactions);
+    }
+
+    public function approve(Request $request, Transaction $transaction): JsonResponse
+    {
+        $this->authorize('update', $transaction);
+
+        if (!$transaction->is_pending) {
+            return response()->json(['message' => 'Transaksi sudah dikonfirmasi'], 400);
+        }
+
+        $validated = $request->validate([
+            'category_id' => 'nullable|exists:categories,id',
+            'account_id' => 'nullable|exists:accounts,id',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $updateData = array_merge($validated, [
+            'is_pending' => false,
+            'pending_source' => $transaction->pending_source,
+        ]);
+
+        $transaction = $this->transactionService->approvePending($transaction, $updateData);
+
+        return response()->json([
+            'message' => 'Transaksi dikonfirmasi',
+            'transaction' => new TransactionResource($transaction),
+        ]);
+    }
+
+    public function reject(Request $request, Transaction $transaction): JsonResponse
+    {
+        $this->authorize('delete', $transaction);
+
+        if (!$transaction->is_pending) {
+            return response()->json(['message' => 'Transaksi sudah dikonfirmasi'], 400);
+        }
+
+        $transaction->delete();
+
+        return response()->json([
+            'message' => 'Transaksi ditolak dan dihapus',
         ]);
     }
 }

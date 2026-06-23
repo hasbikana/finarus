@@ -15,6 +15,7 @@
         [data-theme="light"] {
             color-scheme: light;
         }
+        [x-cloak] { display: none !important; }
     </style>
     <script>
         if (localStorage.getItem('finarus-theme') === 'dark' || (!localStorage.getItem('finarus-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -38,6 +39,38 @@
     @endauth
 
     @include('components.toast')
+
+    @auth
+    <div x-data="alertBanner()" x-init="init()" x-show="show" x-cloak
+         class="fixed bottom-4 right-4 max-w-sm z-50 bg-red-600 text-white rounded-lg shadow-2xl p-4 animate-slide-in-up">
+        <div class="flex gap-3 items-start">
+            <span class="text-lg shrink-0">⚠️</span>
+            <div class="flex-1 text-sm font-medium" x-text="message"></div>
+            <button @click="dismiss()" class="text-white/70 hover:text-white shrink-0 p-0.5">&times;</button>
+        </div>
+    </div>
+    <script>
+    function alertBanner() {
+        return {
+            show: false,
+            message: '',
+            init() {
+                fetch('/api/alerts/daily', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.alert) { this.message = d.alert; this.show = true; }
+                })
+                .catch(() => {});
+            },
+            dismiss() {
+                this.show = false;
+            }
+        }
+    }
+    </script>
+    @endauth
 
     @guest
     <div class="min-h-screen">

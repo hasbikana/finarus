@@ -15,16 +15,20 @@ class TransactionService
 
         $transaction = Transaction::create($data);
 
-        if ($transaction->account_id) {
-            $transaction->account->recalculateBalance();
+        $isPending = $data['is_pending'] ?? true;
+
+        if (!$isPending) {
+            $this->applyBalance($transaction);
         }
 
-        if ($transaction->saving_goal_id && $transaction->type === 'expense') {
-            $goal = SavingGoal::find($transaction->saving_goal_id);
-            if ($goal) {
-                $goal->increment('current_amount', $transaction->amount);
-            }
-        }
+        return $transaction->load(['category', 'account', 'savingGoal']);
+    }
+
+    public function approvePending(Transaction $transaction, array $data): Transaction
+    {
+        $transaction->update($data);
+
+        $this->applyBalance($transaction);
 
         return $transaction->load(['category', 'account', 'savingGoal']);
     }
@@ -72,16 +76,34 @@ class TransactionService
         $amount = $transaction->amount;
         $type = $transaction->type;
 
+        $isPending = $transaction->is_pending;
+
         $transaction->delete();
 
-        if ($accountId) {
-            Account::find($accountId)?->recalculateBalance();
+        if (!$isPending) {
+            if ($accountId) {
+                Account::find($accountId)?->recalculateBalance();
+            }
+
+            if ($savingGoalId && $type === 'expense') {
+                $goal = SavingGoal::find($savingGoalId);
+                if ($goal) {
+                    $goal->decrement('current_amount', $amount);
+                }
+            }
+        }
+    }
+
+    protected function applyBalance(Transaction $transaction): void
+    {
+        if ($transaction->account_id) {
+            $transaction->account->recalculateBalance();
         }
 
-        if ($savingGoalId && $type === 'expense') {
-            $goal = SavingGoal::find($savingGoalId);
+        if ($transaction->saving_goal_id && $transaction->type === 'expense') {
+            $goal = SavingGoal::find($transaction->saving_goal_id);
             if ($goal) {
-                $goal->decrement('current_amount', $amount);
+                $goal->increment('current_amount', $transaction->amount);
             }
         }
     }

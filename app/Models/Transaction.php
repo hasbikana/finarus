@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'category_id', 'account_id', 'saving_goal_id', 'type', 'amount', 'description', 'transaction_date', 'email_message_id', 'source'])]
+#[Fillable(['user_id', 'category_id', 'account_id', 'saving_goal_id', 'type', 'amount', 'description', 'transaction_date', 'email_message_id', 'source', 'is_pending', 'pending_source'])]
 class Transaction extends Model
 {
     use HasFactory;
@@ -15,6 +15,7 @@ class Transaction extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'transaction_date' => 'date',
+        'is_pending' => 'boolean',
     ];
 
     public function user(): BelongsTo

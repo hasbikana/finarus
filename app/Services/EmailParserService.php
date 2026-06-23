@@ -64,13 +64,11 @@ class EmailParserService
             'transaction_date' => $parsed->transactionDate,
             'email_message_id' => $parsed->messageId,
             'source' => 'email',
+            'is_pending' => true,
+            'pending_source' => 'email',
         ]);
 
-        if ($account) {
-            $account->recalculateBalance();
-        }
-
-        Log::info('Email transaction created', [
+        Log::info('Pending email transaction created', [
             'user_id' => $userId,
             'transaction_id' => $transaction->id,
             'provider' => $parsed->provider,

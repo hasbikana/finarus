@@ -30,14 +30,19 @@ class WebCrudController extends Controller
 
     public function storeTransaksi(StoreTransactionRequest $req): RedirectResponse
     {
-        $this->txnService->createTransaction($req->validated());
+        $data = $req->validated();
+        $data['is_pending'] = false;
+        $this->txnService->createTransaction($data);
         return back()->with('success', 'Transaksi berhasil dibuat.');
     }
 
     public function updateTransaksi(UpdateTransactionRequest $req, Transaction $transaction): RedirectResponse
     {
         $this->authorize('update', $transaction);
-        $this->txnService->updateTransaction($transaction, $req->validated());
+
+        $data = $req->validated();
+        $data['is_pending'] = false;
+        $this->txnService->updateTransaction($transaction, $data);
         return back()->with('success', 'Transaksi berhasil diperbarui.');
     }
 

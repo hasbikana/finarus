@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\OAuthController;
+use App\Http\Controllers\Api\PendingNotificationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SavingGoalController;
 use App\Http\Controllers\Api\SettingController;
@@ -26,6 +28,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('transactions', TransactionController::class);
+
+    Route::prefix('pending-transactions')->group(function () {
+        Route::get('/', [TransactionController::class, 'pending']);
+        Route::patch('{transaction}/approve', [TransactionController::class, 'approve']);
+        Route::delete('{transaction}/reject', [TransactionController::class, 'reject']);
+    });
     Route::apiResource('budgets', BudgetController::class);
     Route::apiResource('saving-goals', SavingGoalController::class);
     Route::apiResource('accounts', AccountController::class);
@@ -43,4 +51,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/oauth/google', [OAuthController::class, 'disconnect']);
 
     Route::post('/upload', [UploadController::class, 'upload']);
+
+    Route::prefix('pending-notifications')->group(function () {
+        Route::get('/', [PendingNotificationController::class, 'index']);
+        Route::post('/', [PendingNotificationController::class, 'store']);
+        Route::patch('{pending_notification}/approve', [PendingNotificationController::class, 'approve']);
+        Route::delete('{pending_notification}/reject', [PendingNotificationController::class, 'reject']);
+        Route::get('/count', [PendingNotificationController::class, 'count']);
+    });
+
+    Route::get('/alerts/daily', [AlertController::class, 'daily']);
 });

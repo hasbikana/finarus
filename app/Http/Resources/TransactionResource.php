@@ -18,6 +18,8 @@ class TransactionResource extends JsonResource
             'category' => new CategoryResource($this->whenLoaded('category')),
             'account' => new AccountResource($this->whenLoaded('account')),
             'saving_goal' => new SavingGoalResource($this->whenLoaded('savingGoal')),
+            'is_pending' => $this->is_pending ?? false,
+            'pending_source' => $this->pending_source,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
