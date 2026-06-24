@@ -10,9 +10,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Google\Client as GoogleClient;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 
 class OAuthController extends Controller
@@ -139,5 +141,60 @@ class OAuthController extends Controller
             'email_fetch_enabled' => $user->settings?->email_fetch_enabled ?? false,
             'expires_at' => $token?->expires_at,
         ]);
+    }
+
+    public function googleLogin(Request $request): JsonResponse
+    {
+        $request->validate([
+            'id_token' => 'required|string',
+        ]);
+
+        $client = new GoogleClient(['client_id' => config('services.google.client_id')]);
+
+        try {
+            $payload = $client->verifyIdToken($request->id_token);
+        } catch (\Exception $e) {
+            throw ValidationException::withMessages([
+                'id_token' => ['Token Google tidak valid.'],
+            ]);
+        }
+
+        if (!$payload) {
+            throw ValidationException::withMessages([
+                'id_token' => ['Token Google tidak valid.'],
+            ]);
+        }
+
+        $email = $payload['email'];
+        $name = $payload['name'] ?? $email;
+
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $name,
+                'password' => Hash::make(Str::random(32)),
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $isNew = $user->wasRecentlyCreated;
+
+        if ($isNew) {
+            UserSetting::create(['user_id' => $user->id]);
+            $user->accounts()->create([
+                'name' => 'Cash / Dompet',
+                'provider' => 'Cash',
+                'type' => 'cash',
+                'balance' => 0,
+            ]);
+        }
+
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return response()->json([
+            'message' => $isNew ? 'Registrasi berhasil' : 'Login berhasil',
+            'user' => $user,
+            'token' => $token,
+        ], $isNew ? 201 : 200);
     }
 }
