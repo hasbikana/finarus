@@ -56,11 +56,11 @@ class PendingNotificationController extends Controller
         ], 201);
     }
 
-    public function approve(Request $request, PendingNotification $notification): JsonResponse
+    public function approve(Request $request, PendingNotification $pending_notification): JsonResponse
     {
-        $this->authorize('update', $notification);
+        $this->authorize('update', $pending_notification);
 
-        if ($notification->status !== 'pending') {
+        if ($pending_notification->status !== 'pending') {
             return response()->json(['message' => 'Notifikasi sudah diproses'], 400);
         }
 
@@ -74,15 +74,15 @@ class PendingNotificationController extends Controller
             'user_id' => $request->user()->id,
             'category_id' => $validated['category_id'],
             'account_id' => $validated['account_id'],
-            'type' => $notification->type,
-            'amount' => $notification->amount,
-            'description' => $validated['description'] ?? $notification->merchant ?? $notification->description,
-            'transaction_date' => $notification->notification_date ?? now()->toDateString(),
+            'type' => $pending_notification->type,
+            'amount' => $pending_notification->amount,
+            'description' => $validated['description'] ?? $pending_notification->merchant ?? $pending_notification->description,
+            'transaction_date' => $pending_notification->notification_date ?? now()->toDateString(),
             'is_pending' => false,
-            'pending_source' => $notification->source,
+            'pending_source' => $pending_notification->source,
         ]);
 
-        $notification->update(['status' => 'confirmed']);
+        $pending_notification->update(['status' => 'confirmed']);
 
         return response()->json([
             'message' => 'Transaksi berhasil dibuat dari notifikasi',
@@ -90,15 +90,15 @@ class PendingNotificationController extends Controller
         ]);
     }
 
-    public function reject(Request $request, PendingNotification $notification): JsonResponse
+    public function reject(Request $request, PendingNotification $pending_notification): JsonResponse
     {
-        $this->authorize('delete', $notification);
+        $this->authorize('delete', $pending_notification);
 
-        if ($notification->status !== 'pending') {
+        if ($pending_notification->status !== 'pending') {
             return response()->json(['message' => 'Notifikasi sudah diproses'], 400);
         }
 
-        $notification->update(['status' => 'rejected']);
+        $pending_notification->update(['status' => 'rejected']);
 
         return response()->json([
             'message' => 'Notifikasi ditolak',
