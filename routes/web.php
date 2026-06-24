@@ -63,8 +63,8 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/pengaturan/settings', [WebPageController::class, 'updateSettings'])->name('pengaturan.settings.update');
 
-    Route::patch('/notifikasi/{pendingNotification}/approve', [WebPageController::class, 'approveNotification'])->name('notifikasi.approve');
-    Route::delete('/notifikasi/{pendingNotification}/reject', [WebPageController::class, 'rejectNotification'])->name('notifikasi.reject');
+    Route::patch('/notifikasi/{pending_notification}/approve', [WebPageController::class, 'approveNotification'])->name('notifikasi.approve');
+    Route::delete('/notifikasi/{pending_notification}/reject', [WebPageController::class, 'rejectNotification'])->name('notifikasi.reject');
 });
 
 require __DIR__.'/auth.php';

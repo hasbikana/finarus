@@ -15,6 +15,16 @@
     <div class="mb-4 px-4 py-3 rounded-md bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">{{ session('error') }}</div>
     @endif
 
+    @if($errors->any())
+    <div class="mb-4 px-4 py-3 rounded-md bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
+        <ul class="list-disc list-inside">
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     @forelse($notifications as $notif)
     <div class="border border-border rounded-lg p-4 mb-3">
         <div class="flex items-start justify-between gap-4">

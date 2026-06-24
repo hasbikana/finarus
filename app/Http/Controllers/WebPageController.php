@@ -17,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class WebPageController extends Controller
@@ -194,37 +195,45 @@ class WebPageController extends Controller
         return view('app.notifikasi.index', compact('notifications', 'categories', 'accounts'));
     }
 
-    public function approveNotification(Request $request, PendingNotification $notification, TransactionService $transactionService): RedirectResponse
+    public function approveNotification(Request $request, TransactionService $transactionService): RedirectResponse
     {
+        $notification = PendingNotification::findOrFail($request->route('pending_notification'));
+
         if ($notification->user_id !== Auth::id() || $notification->status !== 'pending') {
             return back()->with('error', 'Notifikasi tidak valid');
         }
 
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'account_id' => 'required|exists:accounts,id',
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('user_id', Auth::id())],
+            'account_id' => ['required', Rule::exists('accounts', 'id')->where('user_id', Auth::id())],
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $transactionService->createTransaction([
-            'user_id' => Auth::id(),
-            'category_id' => $validated['category_id'],
-            'account_id' => $validated['account_id'],
-            'type' => $notification->type,
-            'amount' => $notification->amount,
-            'description' => $validated['description'] ?? $notification->merchant ?? $notification->description,
-            'transaction_date' => $notification->notification_date ?? now()->toDateString(),
-            'is_pending' => false,
-            'pending_source' => $notification->source,
-        ]);
+        try {
+            $transactionService->createTransaction([
+                'user_id' => Auth::id(),
+                'category_id' => $validated['category_id'],
+                'account_id' => $validated['account_id'],
+                'type' => $notification->type,
+                'amount' => $notification->amount,
+                'description' => $validated['description'] ?? $notification->merchant ?? $notification->description,
+                'transaction_date' => $notification->notification_date ?? now()->toDateString(),
+                'is_pending' => false,
+                'pending_source' => $notification->source,
+            ]);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal menyimpan transaksi: ' . $e->getMessage());
+        }
 
         $notification->update(['status' => 'confirmed']);
 
         return redirect()->route('notifikasi')->with('success', 'Transaksi berhasil dibuat');
     }
 
-    public function rejectNotification(Request $request, PendingNotification $notification): RedirectResponse
+    public function rejectNotification(Request $request): RedirectResponse
     {
+        $notification = PendingNotification::findOrFail($request->route('pending_notification'));
+
         if ($notification->user_id !== Auth::id() || $notification->status !== 'pending') {
             return back()->with('error', 'Notifikasi tidak valid');
         }

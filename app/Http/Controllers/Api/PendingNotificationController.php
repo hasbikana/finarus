@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Validation\Rule;
 
 class PendingNotificationController extends Controller
 {
@@ -64,8 +65,8 @@ class PendingNotificationController extends Controller
         }
 
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'account_id' => 'required|exists:accounts,id',
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('user_id', $request->user()->id)],
+            'account_id' => ['required', Rule::exists('accounts', 'id')->where('user_id', $request->user()->id)],
             'description' => 'nullable|string|max:1000',
         ]);
 
