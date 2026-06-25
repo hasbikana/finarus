@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'name', 'provider', 'type', 'account_number', 'balance', 'logo'])]
+#[Fillable(['user_id', 'name', 'provider', 'type', 'account_number', 'balance', 'logo', 'email_scopes'])]
 class Account extends Model
 {
     use HasFactory;
 
     protected $casts = [
         'balance' => 'decimal:2',
+        'email_scopes' => 'array',
     ];
 
     public function user(): BelongsTo

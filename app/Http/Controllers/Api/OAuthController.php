@@ -26,6 +26,9 @@ class OAuthController extends Controller
         if (Auth::check()) {
             $driver->scopes(['https://www.googleapis.com/auth/gmail.readonly'])
                    ->with(['access_type' => 'offline', 'prompt' => 'consent']);
+        } else {
+            // Force account chooser so users can switch Google accounts on login
+            $driver->with(['prompt' => 'select_account']);
         }
 
         return $driver->redirect();
@@ -36,8 +39,19 @@ class OAuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (\Exception $e) {
-            Log::error('Google OAuth error: ' . $e->getMessage());
-            return redirect()->route('login')->with('error', 'Gagal login dengan Google. Silakan coba lagi.');
+            Log::error('Google OAuth error', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'state' => request()->input('state'),
+                'code' => request()->input('code'),
+                'error' => request()->input('error'),
+                'error_description' => request()->input('error_description'),
+            ]);
+
+            $message = request()->input('error_description')
+                ?? 'Gagal login dengan Google. Silakan coba lagi.';
+
+            return redirect()->route('login')->with('error', $message);
         }
 
         if (Auth::check()) {

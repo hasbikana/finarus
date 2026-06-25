@@ -21,11 +21,11 @@ class GmailService
         'linkaja' => ['no-reply@linkaja.id'],
     ];
 
-    public function fetchNewEmails(UserOAuthToken $token, int $maxResults = 10): array
+    public function fetchNewEmails(UserOAuthToken $token, array $scopes = [], int $maxResults = 10): array
     {
         $client = $this->createClient($token);
         $gmail = new Gmail($client);
-        $query = $this->buildSenderQuery();
+        $query = $scopes ? $this->buildSenderQuery($scopes) : $this->buildSenderQuery();
 
         try {
             $messages = [];
@@ -99,12 +99,17 @@ class GmailService
         return $client;
     }
 
-    protected function buildSenderQuery(): string
+    protected function buildSenderQuery(?array $scopes = null): string
     {
-        $parts = [];
-        foreach ($this->senderEmails as $emails) {
-            foreach ($emails as $e) $parts[] = "from:$e";
+        $emails = $scopes ?? [];
+
+        if (empty($emails)) {
+            foreach ($this->senderEmails as $list) {
+                array_push($emails, ...$list);
+            }
         }
+
+        $parts = array_map(fn(string $e) => "from:$e", $emails);
         return '{' . implode(' ', $parts) . '}';
     }
 

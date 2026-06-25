@@ -76,6 +76,14 @@
                     <input type="checkbox" {{ $oauthFetchEnabled ? 'checked' : '' }} class="rounded" onchange="updateSetting('email_fetch_enabled', this.checked)">
                     <span>Ambil transaksi bank/e-wallet otomatis</span><span class="spinner-wrap hidden ml-1"><x-spinner class="w-3 h-3 inline text-muted-foreground" /></span>
                 </label>
+                @if($oauthConnected && $oauthFetchEnabled)
+                <form method="POST" action="{{ route('pengaturan.fetch-emails') }}" class="mt-3">
+                    @csrf
+                    <button type="submit" class="h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-medium">
+                        Ambil Email Sekarang
+                    </button>
+                </form>
+                @endif
             </div>
             @else
             <p class="text-sm text-muted-foreground">Hubungkan akun Google untuk otomatis mencatat transaksi dari email bank & e-wallet Anda.</p>

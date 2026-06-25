@@ -104,4 +104,68 @@
         {{ $notifications->links() }}
     </div>
 </div>
+
+@if(isset($pendingTransactions) && $pendingTransactions->isNotEmpty())
+<div class="bg-card rounded-lg shadow-lg p-5 mt-4">
+    <h3 class="font-semibold mb-3">Transaksi Email Tertunda</h3>
+    <p class="text-xs text-muted-foreground mb-4">Transaksi dari hasil fetching email yang menunggu konfirmasi</p>
+
+    @foreach($pendingTransactions as $tx)
+    <div class="border border-border rounded-lg p-4 mb-3">
+        <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
+                        Email
+                    </span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded {{ $tx->type === 'income' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' }}">
+                        {{ $tx->type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
+                    </span>
+                    @if($tx->category)
+                    <span class="text-xs text-muted-foreground">{{ $tx->category->icon ?? '' }} {{ $tx->category->name }}</span>
+                    @endif
+                </div>
+                <p class="font-semibold text-lg">
+                    <span class="{{ $tx->type === 'income' ? 'text-green-500' : 'text-foreground' }}">
+                        {{ $tx->type === 'income' ? '+' : '-' }}Rp {{ number_format($tx->amount, 0, ',', '.') }}
+                    </span>
+                </p>
+                @if($tx->description)
+                <p class="text-sm text-muted-foreground">{{ $tx->description }}</p>
+                @endif
+                @if($tx->transaction_date)
+                <p class="text-xs text-muted-foreground mt-0.5">{{ $tx->transaction_date->format('d M Y') }}</p>
+                @endif
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('transaksi.pending.approve', $tx) }}" class="mt-4 border-t border-border pt-4">
+            @csrf @method('PATCH')
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <select name="category_id" required class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
+                    <option value="">Pilih Kategori</option>
+                    @foreach($categories as $cat)
+                    <option value="{{ $cat->id }}" {{ $cat->type === 'income' && $tx->type === 'income' ? 'selected' : ($cat->type !== 'income' && $tx->type === 'expense' ? 'selected' : '') }}>
+                        {{ $cat->icon ?? '' }} {{ $cat->name }}
+                    </option>
+                    @endforeach
+                </select>
+                <select name="account_id" class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
+                    <option value="">Pilih Akun (opsional)</option>
+                    @foreach($accounts as $acc)
+                    <option value="{{ $acc->id }}" {{ $tx->account_id === $acc->id ? 'selected' : '' }}>{{ $acc->name }} (Rp {{ number_format($acc->balance, 0, ',', '.') }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <input type="text" name="description" placeholder="Deskripsi (opsional)" value="{{ $tx->description }}" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm mb-3">
+            <div class="flex gap-2">
+                <button type="submit" class="h-9 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">Setuju & Simpan</button>
+                <button type="button" onclick="document.getElementById('reject-tx-{{ $tx->id }}').submit()" class="h-9 px-4 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium">Tolak</button>
+            </div>
+        </form>
+        <form id="reject-tx-{{ $tx->id }}" method="POST" action="{{ route('transaksi.pending.reject', $tx) }}" class="hidden">@csrf @method('DELETE')</form>
+    </div>
+    @endforeach
+</div>
+@endif
 @endsection

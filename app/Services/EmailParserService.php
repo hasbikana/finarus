@@ -23,8 +23,27 @@ class EmailParserService
         return $this->parsers;
     }
 
-    public function parseEmail(string $from, string $subject, string $body): ?ParsedTransaction
+    public function parseEmail(string $from, string $subject, string $body, ?int $userId = null): ?ParsedTransaction
     {
+        $bareEmail = $this->extractEmail($from);
+
+        if ($userId && $bareEmail) {
+            $account = Account::where('user_id', $userId)
+                ->whereJsonContains('email_scopes', $bareEmail)
+                ->first();
+
+            if ($account?->provider) {
+                foreach ($this->parsers as $parser) {
+                    if (strtolower($parser->provider()) === strtolower($account->provider)) {
+                        $result = $parser->parse($from, $subject, $body);
+                        if ($result !== null) {
+                            return $result;
+                        }
+                    }
+                }
+            }
+        }
+
         foreach ($this->parsers as $parser) {
             if ($parser->canParse($from, $subject)) {
                 $result = $parser->parse($from, $subject, $body);
@@ -37,7 +56,7 @@ class EmailParserService
         return null;
     }
 
-    public function processParsedTransaction(ParsedTransaction $parsed, int $userId): ?Transaction
+    public function processParsedTransaction(ParsedTransaction $parsed, int $userId, ?string $fromEmail = null): ?Transaction
     {
         if (Transaction::where('user_id', $userId)
             ->where('email_message_id', $parsed->messageId)
@@ -46,7 +65,14 @@ class EmailParserService
         }
 
         $account = null;
-        if ($parsed->provider) {
+
+        if ($fromEmail) {
+            $account = Account::where('user_id', $userId)
+                ->whereJsonContains('email_scopes', $fromEmail)
+                ->first();
+        }
+
+        if (!$account && $parsed->provider) {
             $account = Account::where('user_id', $userId)
                 ->where('provider', $parsed->provider)
                 ->first();
@@ -86,5 +112,13 @@ class EmailParserService
             ['user_id' => $userId, 'name' => $name],
             ['type' => $parsed->type, 'icon' => '🤖', 'color' => '#6366f1']
         );
+    }
+
+    protected function extractEmail(string $from): string
+    {
+        if (preg_match('/<([^>]+)>/', $from, $m)) {
+            return strtolower(trim($m[1]));
+        }
+        return strtolower(trim($from));
     }
 }

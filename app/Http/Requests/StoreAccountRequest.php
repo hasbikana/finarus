@@ -20,6 +20,8 @@ class StoreAccountRequest extends FormRequest
             'account_number' => 'nullable|string|max:100',
             'balance' => 'nullable|numeric|min:0',
             'logo' => 'nullable|string|max:100',
+            'email_scopes' => 'nullable|array',
+            'email_scopes.*' => 'email:rfc',
         ];
     }
 }

@@ -21,9 +21,16 @@ abstract class BaseParser implements EmailParser
         ];
         foreach ($patterns as $p) {
             if (preg_match($p, $body, $m)) {
-                $clean = str_replace(['.', ','], ['', '.'], $m[1]);
-                $clean = preg_replace('/[^0-9.]/', '', $clean);
-                $v = (float) $clean;
+                $num = $m[1];
+                if (preg_match('/\.(\d{2})$/', $num)) {
+                    $num = str_replace(',', '', $num);
+                } elseif (preg_match('/,(\d{2})$/', $num)) {
+                    $num = str_replace('.', '', $num);
+                    $num = str_replace(',', '.', $num);
+                } else {
+                    $num = preg_replace('/[^0-9]/', '', $num);
+                }
+                $v = (float) $num;
                 if ($v > 0 && $v < 1000000000) return $v;
             }
         }

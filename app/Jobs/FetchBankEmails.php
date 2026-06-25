@@ -40,15 +40,25 @@ class FetchBankEmails implements ShouldQueue
             return;
         }
 
-        $messages = $gmail->fetchNewEmails($token, $this->maxEmails);
+        $scopes = $user->accounts()
+            ->where('type', '!=', 'cash')
+            ->whereNotNull('email_scopes')
+            ->pluck('email_scopes')
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $messages = $gmail->fetchNewEmails($token, $scopes, $this->maxEmails);
         $processed = 0;
 
         foreach ($messages as $meta) {
             $email = $gmail->fetchMessageContent($token, $meta->getId());
             if (!$email) continue;
 
-            $parsed = $parser->parseEmail($email['from'], $email['subject'], $email['body']);
-            if ($parsed && $parser->processParsedTransaction($parsed, $this->userId)) {
+            $parsed = $parser->parseEmail($email['from'], $email['subject'], $email['body'], $this->userId);
+            if ($parsed && $parser->processParsedTransaction($parsed, $this->userId, $email['from'])) {
                 $processed++;
             }
         }

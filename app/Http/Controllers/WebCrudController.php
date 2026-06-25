@@ -138,6 +138,7 @@ class WebCrudController extends Controller
             'amount' => $validated['amount'],
             'description' => 'Tambah dana: ' . $savingGoal->name,
             'transaction_date' => $validated['transaction_date'],
+            'is_pending' => false,
         ]);
 
         return back()->with('success', 'Dana berhasil ditambahkan ke ' . $savingGoal->name . '!');
@@ -145,14 +146,26 @@ class WebCrudController extends Controller
 
     public function storeDompet(StoreAccountRequest $req): RedirectResponse
     {
-        Auth::user()->accounts()->create($req->validated());
+        $data = $req->validated();
+
+        if (($data['type'] ?? '') === 'cash') {
+            $data['email_scopes'] = null;
+        }
+
+        Auth::user()->accounts()->create($data);
         return back()->with('success', 'Akun berhasil dibuat.');
     }
 
     public function updateDompet(UpdateAccountRequest $req, Account $account): RedirectResponse
     {
         $this->authorize('update', $account);
-        $account->update($req->validated());
+        $data = $req->validated();
+
+        if (($data['type'] ?? $account->type) === 'cash') {
+            $data['email_scopes'] = null;
+        }
+
+        $account->update($data);
         return back()->with('success', 'Akun berhasil diperbarui.');
     }
 

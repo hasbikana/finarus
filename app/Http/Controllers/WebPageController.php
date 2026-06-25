@@ -10,6 +10,7 @@ use App\Models\SavingGoal;
 use App\Models\Transaction;
 use App\Models\UserSetting;
 use App\Models\UserOAuthToken;
+use App\Jobs\FetchBankEmails;
 use App\Services\ReportService;
 use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
@@ -189,10 +190,18 @@ class WebPageController extends Controller
             ->latest()
             ->paginate(20);
 
+        $pendingTransactions = $user->transactions()
+            ->with(['category', 'account', 'savingGoal'])
+            ->where('is_pending', true)
+            ->where('source', 'email')
+            ->where('pending_source', 'email')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         $categories = $user->categories()->orderBy('name')->get();
         $accounts = $user->accounts()->orderBy('name')->get();
 
-        return view('app.notifikasi.index', compact('notifications', 'categories', 'accounts'));
+        return view('app.notifikasi.index', compact('notifications', 'pendingTransactions', 'categories', 'accounts'));
     }
 
     public function approveNotification(Request $request, TransactionService $transactionService): RedirectResponse
@@ -241,6 +250,55 @@ class WebPageController extends Controller
         $notification->update(['status' => 'rejected']);
 
         return redirect()->route('notifikasi')->with('success', 'Notifikasi ditolak');
+    }
+
+    public function fetchEmails(): RedirectResponse
+    {
+        $token = UserOAuthToken::where('user_id', Auth::id())->where('provider', 'google')->first();
+        if (!$token) {
+            return back()->with('error', 'Google akun belum terhubung.');
+        }
+
+        FetchBankEmails::dispatchSync(Auth::id());
+
+        return back()->with('success', 'Fetch email sedang diproses. Buka halaman Notifikasi beberapa saat lagi.');
+    }
+
+    public function approvePendingTransaction(Request $request, Transaction $transaction, TransactionService $txnService): RedirectResponse
+    {
+        $this->authorize('update', $transaction);
+
+        if (!$transaction->is_pending) {
+            return back()->with('error', 'Transaksi sudah dikonfirmasi');
+        }
+
+        $validated = $request->validate([
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', Auth::id())],
+            'account_id' => ['nullable', Rule::exists('accounts', 'id')->where('user_id', Auth::id())],
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $updateData = array_merge($validated, [
+            'is_pending' => false,
+            'pending_source' => $transaction->pending_source,
+        ]);
+
+        $txnService->approvePending($transaction, $updateData);
+
+        return redirect()->route('notifikasi')->with('success', 'Transaksi berhasil dikonfirmasi');
+    }
+
+    public function rejectPendingTransaction(Transaction $transaction): RedirectResponse
+    {
+        $this->authorize('update', $transaction);
+
+        if (!$transaction->is_pending) {
+            return back()->with('error', 'Transaksi sudah dikonfirmasi');
+        }
+
+        $transaction->update(['pending_source' => 'rejected']);
+
+        return redirect()->route('notifikasi')->with('success', 'Transaksi ditolak');
     }
 
     protected function ensureCashAccount($user): void
