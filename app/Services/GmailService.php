@@ -10,22 +10,15 @@ use Illuminate\Support\Facades\Log;
 
 class GmailService
 {
-    protected array $senderEmails = [
-        'bca' => ['info@bca.co.id', 'bca@notify.bca.co.id'],
-        'mandiri' => ['mandiri@email.mandiri.co.id'],
-        'bni' => ['bnicustomer@bni.co.id'],
-        'bri' => ['bri-info@bri.co.id'],
-        'gopay' => ['notification@gopay.co.id'],
-        'ovo' => ['notification@ovo.id'],
-        'dana' => ['no-reply@dana.id'],
-        'linkaja' => ['no-reply@linkaja.id'],
-    ];
+    public function __construct(
+        protected EmailProviderRegistry $providerRegistry,
+    ) {}
 
-    public function fetchNewEmails(UserOAuthToken $token, array $scopes = [], int $maxResults = 10): array
+    public function fetchNewEmails(UserOAuthToken $token, array $scopes = [], int $maxResults = 10, ?\Carbon\Carbon $after = null): array
     {
         $client = $this->createClient($token);
         $gmail = new Gmail($client);
-        $query = $scopes ? $this->buildSenderQuery($scopes) : $this->buildSenderQuery();
+        $query = $scopes ? $this->buildSenderQuery($scopes, $after) : $this->buildSenderQuery(after: $after);
 
         try {
             $messages = [];
@@ -99,18 +92,22 @@ class GmailService
         return $client;
     }
 
-    protected function buildSenderQuery(?array $scopes = null): string
+    protected function buildSenderQuery(?array $scopes = null, ?\Carbon\Carbon $after = null): string
     {
         $emails = $scopes ?? [];
 
         if (empty($emails)) {
-            foreach ($this->senderEmails as $list) {
-                array_push($emails, ...$list);
-            }
+            $emails = $this->providerRegistry->getAllSenders();
         }
 
         $parts = array_map(fn(string $e) => "from:$e", $emails);
-        return '{' . implode(' ', $parts) . '}';
+        $query = '{' . implode(' ', $parts) . '}';
+
+        if ($after) {
+            $query .= ' after:' . $after->format('Y/m/d');
+        }
+
+        return $query;
     }
 
     protected function parseHeaders(GmailMessage $message): array
@@ -148,12 +145,6 @@ class GmailService
 
     public function getProviderFromSender(string $from): ?string
     {
-        $from = strtolower(trim($from));
-        foreach ($this->senderEmails as $provider => $emails) {
-            foreach ($emails as $email) {
-                if (str_contains($from, $email)) return $provider;
-            }
-        }
-        return null;
+        return $this->providerRegistry->getProviderFromSender($from);
     }
 }

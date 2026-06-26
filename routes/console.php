@@ -14,4 +14,4 @@ Schedule::call(function () {
     User::whereHas('settings', fn($q) => $q->where('email_fetch_enabled', true))
         ->whereHas('oauthTokens')
         ->each(fn($user) => FetchBankEmails::dispatchSync($user->id));
-})->everyMinute()->name('fetch-bank-emails');
+})->everyFiveMinutes()->name('fetch-bank-emails');

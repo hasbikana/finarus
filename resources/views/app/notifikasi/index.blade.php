@@ -30,8 +30,9 @@
         <div class="flex items-start justify-between gap-4">
             <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="text-xs font-medium px-2 py-0.5 rounded {{ $notif->source === 'push_notif' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400' }}">
-                        {{ $notif->source === 'push_notif' ? 'Notif HP' : 'OCR' }}
+                    <span class="text-xs font-medium px-2 py-0.5 rounded
+                        {{ $notif->source === 'push_notif' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : ($notif->source === 'email' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400') }}">
+                        {{ $notif->source === 'push_notif' ? 'Notif HP' : ($notif->source === 'email' ? 'Email' : 'OCR') }}
                     </span>
                     <span class="text-xs font-medium px-2 py-0.5 rounded {{ $notif->type === 'income' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' }}">
                         {{ $notif->type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
@@ -70,11 +71,11 @@
 
         <form method="POST" action="{{ route('notifikasi.approve', $notif) }}" class="mt-4 border-t border-border pt-4">
             @csrf @method('PATCH')
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <select name="category_id" required class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <select name="category_id" required class="notif-category h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
                     <option value="">Pilih Kategori</option>
                     @foreach($categories as $cat)
-                    <option value="{{ $cat->id }}" {{ $cat->type === 'income' && $notif->type === 'income' ? 'selected' : ($cat->type !== 'income' && $notif->type === 'expense' ? 'selected' : '') }}>
+                    <option value="{{ $cat->id }}" data-type="{{ $cat->type }}" {{ $cat->type === 'income' && $notif->type === 'income' ? 'selected' : ($cat->type !== 'income' && $notif->type === 'expense' ? 'selected' : '') }}>
                         {{ $cat->icon ?? '' }} {{ $cat->name }}
                     </option>
                     @endforeach
@@ -82,8 +83,12 @@
                 <select name="account_id" required class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
                     <option value="">Pilih Akun</option>
                     @foreach($accounts as $acc)
-                    <option value="{{ $acc->id }}">{{ $acc->name }} (Rp {{ number_format($acc->balance, 0, ',', '.') }})</option>
+                    <option value="{{ $acc->id }}" {{ $notif->account_id === $acc->id ? 'selected' : '' }}>{{ $acc->name }} (Rp {{ number_format($acc->balance, 0, ',', '.') }})</option>
                     @endforeach
+                </select>
+                <select name="type" class="notif-type h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
+                    <option value="expense" {{ $notif->type === 'expense' ? 'selected' : '' }}>Pengeluaran</option>
+                    <option value="income" {{ $notif->type === 'income' ? 'selected' : '' }}>Pemasukan</option>
                 </select>
             </div>
             <input type="text" name="description" placeholder="Deskripsi (opsional)" value="{{ $notif->merchant ?? $notif->description }}" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm mb-3">
@@ -105,67 +110,17 @@
     </div>
 </div>
 
-@if(isset($pendingTransactions) && $pendingTransactions->isNotEmpty())
-<div class="bg-card rounded-lg shadow-lg p-5 mt-4">
-    <h3 class="font-semibold mb-3">Transaksi Email Tertunda</h3>
-    <p class="text-xs text-muted-foreground mb-4">Transaksi dari hasil fetching email yang menunggu konfirmasi</p>
-
-    @foreach($pendingTransactions as $tx)
-    <div class="border border-border rounded-lg p-4 mb-3">
-        <div class="flex items-start justify-between gap-4">
-            <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
-                        Email
-                    </span>
-                    <span class="text-xs font-medium px-2 py-0.5 rounded {{ $tx->type === 'income' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' }}">
-                        {{ $tx->type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
-                    </span>
-                    @if($tx->category)
-                    <span class="text-xs text-muted-foreground">{{ $tx->category->icon ?? '' }} {{ $tx->category->name }}</span>
-                    @endif
-                </div>
-                <p class="font-semibold text-lg">
-                    <span class="{{ $tx->type === 'income' ? 'text-green-500' : 'text-foreground' }}">
-                        {{ $tx->type === 'income' ? '+' : '-' }}Rp {{ number_format($tx->amount, 0, ',', '.') }}
-                    </span>
-                </p>
-                @if($tx->description)
-                <p class="text-sm text-muted-foreground">{{ $tx->description }}</p>
-                @endif
-                @if($tx->transaction_date)
-                <p class="text-xs text-muted-foreground mt-0.5">{{ $tx->transaction_date->format('d M Y') }}</p>
-                @endif
-            </div>
-        </div>
-
-        <form method="POST" action="{{ route('transaksi.pending.approve', $tx) }}" class="mt-4 border-t border-border pt-4">
-            @csrf @method('PATCH')
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <select name="category_id" required class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
-                    <option value="">Pilih Kategori</option>
-                    @foreach($categories as $cat)
-                    <option value="{{ $cat->id }}" {{ $cat->type === 'income' && $tx->type === 'income' ? 'selected' : ($cat->type !== 'income' && $tx->type === 'expense' ? 'selected' : '') }}>
-                        {{ $cat->icon ?? '' }} {{ $cat->name }}
-                    </option>
-                    @endforeach
-                </select>
-                <select name="account_id" class="h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
-                    <option value="">Pilih Akun (opsional)</option>
-                    @foreach($accounts as $acc)
-                    <option value="{{ $acc->id }}" {{ $tx->account_id === $acc->id ? 'selected' : '' }}>{{ $acc->name }} (Rp {{ number_format($acc->balance, 0, ',', '.') }})</option>
-                    @endforeach
-                </select>
-            </div>
-            <input type="text" name="description" placeholder="Deskripsi (opsional)" value="{{ $tx->description }}" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm mb-3">
-            <div class="flex gap-2">
-                <button type="submit" class="h-9 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">Setuju & Simpan</button>
-                <button type="button" onclick="document.getElementById('reject-tx-{{ $tx->id }}').submit()" class="h-9 px-4 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium">Tolak</button>
-            </div>
-        </form>
-        <form id="reject-tx-{{ $tx->id }}" method="POST" action="{{ route('transaksi.pending.reject', $tx) }}" class="hidden">@csrf @method('DELETE')</form>
-    </div>
-    @endforeach
-</div>
-@endif
+@push('scripts')
+<script>
+document.querySelectorAll('.notif-category').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var opt = this.options[this.selectedIndex];
+        if (!opt || !opt.dataset.type) return;
+        if (opt.dataset.type === 'income' || opt.dataset.type === 'expense') {
+            this.closest('form').querySelector('.notif-type').value = opt.dataset.type;
+        }
+    });
+});
+</script>
+@endpush
 @endsection

@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\UserSetting;
 use App\Models\UserOAuthToken;
 use App\Jobs\FetchBankEmails;
+use App\Services\EmailProviderRegistry;
 use App\Services\ReportService;
 use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
@@ -29,26 +30,24 @@ class WebPageController extends Controller
 
         $this->ensureCashAccount($user);
 
-        $totalIncome = $user->transactions()
-            ->where('type', 'income')
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
-            ->sum('amount');
+        $totals = $user->transactions()
+            ->selectRaw("type, SUM(amount) as total")
+            ->whereIn('type', ['income', 'expense'])
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
+            ->whereBetween('transaction_date', [now()->startOfMonth(), now()->endOfMonth()])
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $totalIncome = (float) ($totals['income'] ?? 0);
+        $totalExpense = (float) ($totals['expense'] ?? 0);
 
-        $totalExpense = $user->transactions()
-            ->where('type', 'expense')
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
-            ->sum('amount');
-
-        $balance = $user->accounts()->sum('balance');
-        $cashBalance = $user->accounts()->where('type', 'cash')->sum('balance');
-        $ewalletBalance = $user->accounts()->where('type', 'ewallet')->sum('balance');
-        $bankBalance = $user->accounts()->whereIn('type', ['bank', 'credit_card'])->sum('balance');
-
-        $cashAccounts = $user->accounts()->where('type', 'cash')->orderBy('name')->get();
-        $ewalletAccounts = $user->accounts()->where('type', 'ewallet')->orderBy('name')->get();
-        $bankAccounts = $user->accounts()->whereIn('type', ['bank', 'credit_card'])->orderBy('name')->get();
+        $allAccounts = $user->accounts()->orderBy('type')->orderBy('name')->get();
+        $balance = $allAccounts->sum('balance');
+        $cashBalance = $allAccounts->where('type', 'cash')->sum('balance');
+        $ewalletBalance = $allAccounts->where('type', 'ewallet')->sum('balance');
+        $bankBalance = $allAccounts->whereIn('type', ['bank', 'credit_card'])->sum('balance');
+        $cashAccounts = $allAccounts->where('type', 'cash')->values();
+        $ewalletAccounts = $allAccounts->where('type', 'ewallet')->values();
+        $bankAccounts = $allAccounts->whereIn('type', ['bank', 'credit_card'])->values();
 
         $activeSavingGoals = $user->savingGoals()
             ->whereColumn('current_amount', '<', 'target_amount')
@@ -56,6 +55,7 @@ class WebPageController extends Controller
 
         $recentTransactions = $user->transactions()
             ->with(['category', 'account'])
+            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
             ->latest('transaction_date')
             ->latest('id')
             ->take(5)
@@ -155,7 +155,9 @@ class WebPageController extends Controller
         $accounts = $user->accounts()->where('type', '!=', 'cash')->orderBy('name')->get();
         $totalBalance = $accounts->sum('balance');
 
-        return view('app.dompet-digital.index', compact('accounts', 'totalBalance'));
+        $defaultProviders = app(EmailProviderRegistry::class)->allProviders();
+
+        return view('app.dompet-digital.index', compact('accounts', 'totalBalance', 'defaultProviders'));
     }
 
     public function pengaturan(): View
@@ -190,18 +192,10 @@ class WebPageController extends Controller
             ->latest()
             ->paginate(20);
 
-        $pendingTransactions = $user->transactions()
-            ->with(['category', 'account', 'savingGoal'])
-            ->where('is_pending', true)
-            ->where('source', 'email')
-            ->where('pending_source', 'email')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
         $categories = $user->categories()->orderBy('name')->get();
         $accounts = $user->accounts()->orderBy('name')->get();
 
-        return view('app.notifikasi.index', compact('notifications', 'pendingTransactions', 'categories', 'accounts'));
+        return view('app.notifikasi.index', compact('notifications', 'categories', 'accounts'));
     }
 
     public function approveNotification(Request $request, TransactionService $transactionService): RedirectResponse
@@ -215,6 +209,7 @@ class WebPageController extends Controller
         $validated = $request->validate([
             'category_id' => ['required', Rule::exists('categories', 'id')->where('user_id', Auth::id())],
             'account_id' => ['required', Rule::exists('accounts', 'id')->where('user_id', Auth::id())],
+            'type' => ['required', 'in:income,expense'],
             'description' => 'nullable|string|max:1000',
         ]);
 
@@ -223,7 +218,7 @@ class WebPageController extends Controller
                 'user_id' => Auth::id(),
                 'category_id' => $validated['category_id'],
                 'account_id' => $validated['account_id'],
-                'type' => $notification->type,
+                'type' => $validated['type'],
                 'amount' => $notification->amount,
                 'description' => $validated['description'] ?? $notification->merchant ?? $notification->description,
                 'transaction_date' => $notification->notification_date ?? now()->toDateString(),

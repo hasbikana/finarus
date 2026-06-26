@@ -13,19 +13,15 @@ class DashboardService
     {
         $user = Auth::user();
 
-        $totalIncome = $user->transactions()
-            ->where('type', 'income')
+        $totals = $user->transactions()
+            ->selectRaw("type, SUM(amount) as total")
+            ->whereIn('type', ['income', 'expense'])
             ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
-            ->sum('amount');
-
-        $totalExpense = $user->transactions()
-            ->where('type', 'expense')
-            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
-            ->sum('amount');
+            ->whereBetween('transaction_date', [now()->startOfMonth(), now()->endOfMonth()])
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $totalIncome = (float) ($totals['income'] ?? 0);
+        $totalExpense = (float) ($totals['expense'] ?? 0);
 
         $balance = $user->accounts()->sum('balance');
 

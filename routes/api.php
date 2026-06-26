@@ -30,11 +30,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('transactions', TransactionController::class);
 
-    Route::prefix('pending-transactions')->group(function () {
-        Route::get('/', [TransactionController::class, 'pending']);
-        Route::patch('{transaction}/approve', [TransactionController::class, 'approve']);
-        Route::delete('{transaction}/reject', [TransactionController::class, 'reject']);
-    });
     Route::apiResource('budgets', BudgetController::class);
     Route::apiResource('saving-goals', SavingGoalController::class);
     Route::apiResource('accounts', AccountController::class);

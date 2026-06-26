@@ -13,19 +13,18 @@ class ReportService
         $year = $year ?? now()->year;
         $user = Auth::user();
 
-        $income = $user->transactions()
-            ->where('type', 'income')
+        $totals = $user->transactions()
+            ->selectRaw("type, SUM(amount) as total")
+            ->whereIn('type', ['income', 'expense'])
             ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
-            ->sum('amount');
-
-        $expense = $user->transactions()
-            ->where('type', 'expense')
-            ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
-            ->sum('amount');
+            ->whereBetween('transaction_date', [
+                \Carbon\Carbon::create($year, $month, 1)->startOfMonth(),
+                \Carbon\Carbon::create($year, $month, 1)->endOfMonth(),
+            ])
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $income = (float) ($totals['income'] ?? 0);
+        $expense = (float) ($totals['expense'] ?? 0);
 
         return [
             'month' => $month,
@@ -45,8 +44,10 @@ class ReportService
         return $user->transactions()
             ->where('type', $type)
             ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
+            ->whereBetween('transaction_date', [
+                \Carbon\Carbon::create($year, $month, 1)->startOfMonth(),
+                \Carbon\Carbon::create($year, $month, 1)->endOfMonth(),
+            ])
             ->with('category')
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
@@ -67,7 +68,10 @@ class ReportService
 
         $transactions = $user->transactions()
             ->where(fn($q) => $q->where('is_pending', false)->orWhereNull('is_pending'))
-            ->whereYear('transaction_date', $year)
+            ->whereBetween('transaction_date', [
+                \Carbon\Carbon::create($year, 1, 1)->startOfYear(),
+                \Carbon\Carbon::create($year, 12, 1)->endOfYear(),
+            ])
             ->selectRaw('MONTH(transaction_date) as month, type, SUM(amount) as total')
             ->groupBy('month', 'type')
             ->get();

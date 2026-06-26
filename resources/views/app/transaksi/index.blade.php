@@ -54,7 +54,7 @@
         <div class="space-y-4">
             <h2 class="text-lg font-bold text-foreground" id="txn-title">Tambah Transaksi</h2>
             <div><label class="block text-sm font-medium mb-1">Deskripsi</label><input type="text" name="description" id="txn-desc" value="{{ old('description') }}" required placeholder="Contoh: Belanja Bulanan" maxlength="1000" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground"><x-input-error :messages="$errors->get('description')" class="text-sm mt-1" /></div>
-            <div><label class="block text-sm font-medium mb-1">Kategori</label><select name="category_id" id="txn-cat" required class="w-full h-9 px-3 rounded-md border border-border bg-card text-foreground"><option value="">Pilih</option>@foreach($categories as $cat)<option value="{{ $cat->id }}" {{ old('category_id')==$cat->id?'selected':'' }}>{{ $cat->icon }} {{ $cat->name }}</option>@endforeach</select><x-input-error :messages="$errors->get('category_id')" class="text-sm mt-1" /></div>
+            <div><label class="block text-sm font-medium mb-1">Kategori</label><select name="category_id" id="txn-cat" required class="w-full h-9 px-3 rounded-md border border-border bg-card text-foreground"><option value="">Pilih</option>@foreach($categories as $cat)<option value="{{ $cat->id }}" data-type="{{ $cat->type }}" {{ old('category_id')==$cat->id?'selected':'' }}>{{ $cat->icon }} {{ $cat->name }}</option>@endforeach</select><x-input-error :messages="$errors->get('category_id')" class="text-sm mt-1" /></div>
             <div><label class="block text-sm font-medium mb-1">Akun</label><select name="account_id" id="txn-acc" required class="w-full h-9 px-3 rounded-md border border-border bg-card text-foreground"><option value="">Pilih Akun</option>@foreach($accounts as $acc)<option value="{{ $acc->id }}" {{ old('account_id')==$acc->id?'selected':'' }}>{{ $acc->name }}</option>@endforeach</select><x-input-error :messages="$errors->get('account_id')" class="text-sm mt-1" /></div>
             <div><label class="block text-sm font-medium mb-1">Tipe</label><select name="type" id="txn-type" required class="w-full h-9 px-3 rounded-md border border-border bg-card text-foreground"><option value="expense" {{ old('type')!=='income'?'selected':'' }}>Pengeluaran</option><option value="income" {{ old('type')==='income'?'selected':'' }}>Pemasukan</option></select><x-input-error :messages="$errors->get('type')" class="text-sm mt-1" /></div>
             <div><label class="block text-sm font-medium mb-1">Jumlah (Rp)</label><input type="number" name="amount" id="txn-amount" value="{{ old('amount') }}" required min="1" step="0.01" placeholder="50000" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground"><x-input-error :messages="$errors->get('amount')" class="text-sm mt-1" /></div>
@@ -70,6 +70,13 @@
 
 @push('scripts')
 <script>
+document.getElementById('txn-cat').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    if (!opt || !opt.dataset.type) return;
+    if (opt.dataset.type === 'income' || opt.dataset.type === 'expense') {
+        document.getElementById('txn-type').value = opt.dataset.type;
+    }
+});
 function openModal() {
     var f = document.getElementById('form-txn'); f.action = '{{ route("transaksi.store") }}';
     document.getElementById('txn-method').value = 'POST';
@@ -86,6 +93,7 @@ function editTxn(btn) {
     document.getElementById('txn-type').value = d.type; document.getElementById('txn-amount').value = d.amount; document.getElementById('txn-date').value = d.date;
     document.getElementById('txn-title').textContent = 'Edit Transaksi';
     document.getElementById('modal-txn').showModal();
+    document.getElementById('txn-cat').dispatchEvent(new Event('change'));
 }
 @if($errors->any())
 document.addEventListener('DOMContentLoaded', function(){

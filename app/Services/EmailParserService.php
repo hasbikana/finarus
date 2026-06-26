@@ -6,6 +6,7 @@ use App\Contracts\EmailParser;
 use App\DTO\ParsedTransaction;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\PendingNotification;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 
@@ -102,6 +103,52 @@ class EmailParserService
         ]);
 
         return $transaction;
+    }
+
+    public function saveAsPendingNotification(ParsedTransaction $parsed, int $userId, string $gmailMessageId, ?string $rawBody = null, ?string $fromEmail = null): ?PendingNotification
+    {
+        if (PendingNotification::where('email_message_id', $gmailMessageId)->exists()) {
+            return null;
+        }
+
+        $account = null;
+
+        if ($fromEmail) {
+            $bareEmail = $this->extractEmail($fromEmail);
+            $account = Account::where('user_id', $userId)
+                ->whereJsonContains('email_scopes', $bareEmail)
+                ->first();
+        }
+
+        if (!$account && $parsed->provider) {
+            $account = Account::where('user_id', $userId)
+                ->where('provider', $parsed->provider)
+                ->first();
+        }
+
+        $notification = PendingNotification::create([
+            'user_id' => $userId,
+            'type' => $parsed->type,
+            'amount' => $parsed->amount,
+            'description' => $parsed->description,
+            'merchant' => $parsed->merchant,
+            'notification_date' => $parsed->transactionDate,
+            'raw_body' => $rawBody,
+            'source' => 'email',
+            'status' => 'pending',
+            'email_message_id' => $gmailMessageId,
+            'account_id' => $account?->id,
+        ]);
+
+        Log::info('Pending notification created from email', [
+            'user_id' => $userId,
+            'pending_id' => $notification->id,
+            'provider' => $parsed->provider,
+            'amount' => $parsed->amount,
+            'gmail_message_id' => $gmailMessageId,
+        ]);
+
+        return $notification;
     }
 
     protected function findOrCreateCategory(int $userId, ParsedTransaction $parsed): Category

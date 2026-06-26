@@ -111,9 +111,9 @@ class TestEmailParser extends Command
         );
 
         if ($save) {
-            $txn = $service->processParsedTransaction($result, $userId);
-            if ($txn) {
-                $this->info("   💾 Disimpan ke database — Transaction ID: {$txn->id}");
+            $pn = $service->saveAsPendingNotification($result, $userId, $result->messageId, $sample['body'], $sample['from']);
+            if ($pn) {
+                $this->info("   💾 Disimpan ke pending_notifications — ID: {$pn->id}");
             } else {
                 $this->warn("   ⚠️ Tidak disimpan (mungkin duplikat)");
             }

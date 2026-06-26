@@ -91,6 +91,7 @@ class OAuthController extends Controller
 
         if ($existingUser) {
             Auth::login($existingUser);
+            request()->session()->regenerate();
             Log::info('Google login', ['user_id' => $existingUser->id]);
             return redirect()->intended(route('dashboard'));
         }
@@ -112,6 +113,7 @@ class OAuthController extends Controller
         ]);
 
         Auth::login($user);
+        request()->session()->regenerate();
 
         Log::info('Google register + login', ['user_id' => $user->id]);
 

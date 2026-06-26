@@ -29,13 +29,21 @@ class Budget extends Model
         return $this->belongsTo(Category::class);
     }
 
+    private ?float $cachedSpent = null;
+
     public function getSpentAttribute(): float
     {
-        return (float) Transaction::where('user_id', $this->user_id)
+        if ($this->cachedSpent !== null) {
+            return $this->cachedSpent;
+        }
+
+        return $this->cachedSpent = (float) Transaction::where('user_id', $this->user_id)
             ->where('category_id', $this->category_id)
             ->where('type', 'expense')
-            ->whereMonth('transaction_date', $this->month)
-            ->whereYear('transaction_date', $this->year)
+            ->whereBetween('transaction_date', [
+                \Carbon\Carbon::create($this->year, $this->month, 1)->startOfMonth(),
+                \Carbon\Carbon::create($this->year, $this->month, 1)->endOfMonth(),
+            ])
             ->sum('amount');
     }
 

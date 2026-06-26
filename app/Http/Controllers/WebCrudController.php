@@ -17,6 +17,8 @@ use App\Models\Category;
 use App\Models\Budget;
 use App\Models\SavingGoal;
 use App\Models\Account;
+use App\Models\UserOAuthToken;
+use App\Services\EmailProviderRegistry;
 use App\Services\TransactionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -144,29 +146,58 @@ class WebCrudController extends Controller
         return back()->with('success', 'Dana berhasil ditambahkan ke ' . $savingGoal->name . '!');
     }
 
-    public function storeDompet(StoreAccountRequest $req): RedirectResponse
+    public function storeDompet(StoreAccountRequest $req, EmailProviderRegistry $registry): RedirectResponse
     {
         $data = $req->validated();
 
         if (($data['type'] ?? '') === 'cash') {
             $data['email_scopes'] = null;
+        } else {
+            $data = $this->applyEmailScopes($data, $registry, Auth::user());
         }
 
         Auth::user()->accounts()->create($data);
         return back()->with('success', 'Akun berhasil dibuat.');
     }
 
-    public function updateDompet(UpdateAccountRequest $req, Account $account): RedirectResponse
+    public function updateDompet(UpdateAccountRequest $req, Account $account, EmailProviderRegistry $registry): RedirectResponse
     {
         $this->authorize('update', $account);
         $data = $req->validated();
 
         if (($data['type'] ?? $account->type) === 'cash') {
             $data['email_scopes'] = null;
+        } else {
+            $data = $this->applyEmailScopes($data, $registry, Auth::user());
         }
 
         $account->update($data);
         return back()->with('success', 'Akun berhasil diperbarui.');
+    }
+
+    protected function applyEmailScopes(array $data, EmailProviderRegistry $registry, $user): array
+    {
+        $scopes = $data['email_scopes'] ?? [];
+
+        if (empty($scopes) && !empty($data['provider'])) {
+            $scopes = $registry->getDefaultSenders($data['provider']);
+        }
+
+        if (!empty($scopes)) {
+            $oauthEmail = UserOAuthToken::where('user_id', $user->id)
+                ->where('provider', 'google')
+                ->value('email');
+
+            if ($oauthEmail) {
+                $scopes = array_filter($scopes, fn($s) => strtolower($s) !== strtolower($oauthEmail));
+            }
+
+            $data['email_scopes'] = array_values(array_unique($scopes));
+        } else {
+            $data['email_scopes'] = null;
+        }
+
+        return $data;
     }
 
     public function destroyDompet(Account $account): RedirectResponse

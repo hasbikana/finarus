@@ -50,7 +50,8 @@ class FetchBankEmails implements ShouldQueue
             ->values()
             ->all();
 
-        $messages = $gmail->fetchNewEmails($token, $scopes, $this->maxEmails);
+        $after = $user->settings->last_fetch_at;
+        $messages = $gmail->fetchNewEmails($token, $scopes, $this->maxEmails, $after);
         $processed = 0;
 
         foreach ($messages as $meta) {
@@ -58,10 +59,12 @@ class FetchBankEmails implements ShouldQueue
             if (!$email) continue;
 
             $parsed = $parser->parseEmail($email['from'], $email['subject'], $email['body'], $this->userId);
-            if ($parsed && $parser->processParsedTransaction($parsed, $this->userId, $email['from'])) {
+            if ($parsed && $parser->saveAsPendingNotification($parsed, $this->userId, $email['message_id'], $email['body'], $email['from'])) {
                 $processed++;
             }
         }
+
+        $user->settings->update(['last_fetch_at' => now()]);
 
         Log::info('FetchBankEmails done', [
             'user_id' => $this->userId,

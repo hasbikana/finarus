@@ -50,7 +50,7 @@
             <div><label class="block text-sm font-medium mb-1">Saldo Awal (Rp)</label><input type="number" name="balance" id="acc-balance" value="{{ old('balance',0) }}" min="0" step="0.01" class="w-full h-9 px-3 rounded-md border border-border bg-background text-foreground"><x-input-error :messages="$errors->get('balance')" class="text-sm mt-1" /></div>
 
             <div id="scope-section">
-                <label class="block text-sm font-medium mb-1">App Scope / Email Scope</label>
+                <label class="block text-sm font-medium mb-1">Email pengirim notifikasi (bukan Gmail Anda)</label>
                 <div class="flex gap-2 mb-2">
                     <input type="email" id="scope-input" placeholder="email@provider.com" class="flex-1 h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm">
                     <button type="button" onclick="addScope()" class="h-9 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">+ Tambah</button>
@@ -70,11 +70,11 @@
 
 @push('scripts')
 <script>
-var scopeList=[],defaultScopes={bca:['info@bca.co.id','bca@notify.bca.co.id'],mandiri:['mandiri@email.mandiri.co.id'],bni:['bnicustomer@bni.co.id'],bri:['bri-info@bri.co.id'],gopay:['notification@gopay.co.id'],ovo:['notification@ovo.id'],dana:['no-reply@dana.id'],linkaja:['no-reply@linkaja.id']};
+var scopeList=[],defaultProviders=@json($defaultProviders, JSON_FORCE_OBJECT),defaultScopes={},providerKeyMap={};(function(){Object.keys(defaultProviders).forEach(function(k){defaultScopes[k]=defaultProviders[k].senders;providerKeyMap[defaultProviders[k].name]=k})})();
 function renderScopes(){var c=document.getElementById('scope-tags'),h=document.getElementById('scope-hidden'),e=document.getElementById('scope-empty');c.innerHTML='';h.innerHTML='';if(scopeList.length){e.style.display='none';scopeList.forEach(function(v,i){c.innerHTML+=('<span class=\"inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20\">'+v+'<button type=\"button\" onclick=\"removeScope('+i+')\" class=\"text-primary/60 hover:text-primary\">&times;</button></span>');h.innerHTML+=('<input type=\"hidden\" name=\"email_scopes[]\" value=\"'+v+'\">')})}else e.style.display='block'}
 function addScope(){var inp=document.getElementById('scope-input'),v=inp.value.trim();if(!v||!v.includes('@'))return;if(scopeList.includes(v))return;scopeList.push(v);inp.value='';renderScopes()}
 function removeScope(i){scopeList.splice(i,1);renderScopes()}
-function fillDefaultScopes(){var map={BCA:'bca',Mandiri:'mandiri',BNI:'bni',BRI:'bri',GoPay:'gopay',OVO:'ovo',DANA:'dana',LinkAja:'linkaja'};var p=document.getElementById('acc-provider').value;var k=map[p];if(!k||!defaultScopes[k]){Finarus.toast('Pilih provider terlebih dahulu','warning');return}defaultScopes[k].forEach(function(v){if(!scopeList.includes(v))scopeList.push(v)});renderScopes();Finarus.toast('Email default '+p+' ditambahkan')}
+function fillDefaultScopes(){var p=document.getElementById('acc-provider').value;var k=providerKeyMap[p];if(!k||!defaultScopes[k]){Finarus.toast('Pilih provider terlebih dahulu','warning');return}defaultScopes[k].forEach(function(v){if(!scopeList.includes(v))scopeList.push(v)});renderScopes();Finarus.toast('Email default '+p+' ditambahkan')}
 function clearScopes(){scopeList=[];renderScopes()}
 function pickLogo(v){document.getElementById('acc-logo').value=v;document.getElementById('acc-logo-display').value=v;document.querySelectorAll('.logo-btn').forEach(b=>b.classList.remove('border-primary','ring-2','ring-primary/20'));event.target.closest('.logo-btn')?.classList.add('border-primary','ring-2','ring-primary/20')}
 function autoFillLogo(v){var m={BCA:'bca',Mandiri:'mandiri',BNI:'bni',BRI:'bri',GoPay:'gopay',OVO:'ovo',DANA:'dana',LinkAja:'linkaja'};if(m[v]){document.getElementById('acc-logo').value=m[v];document.getElementById('acc-logo-display').value=m[v]}}

@@ -68,8 +68,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/pengaturan/fetch-emails', [WebPageController::class, 'fetchEmails'])->name('pengaturan.fetch-emails');
 
-    Route::patch('/transaksi/pending/{transaction}/approve', [WebPageController::class, 'approvePendingTransaction'])->name('transaksi.pending.approve');
-    Route::delete('/transaksi/pending/{transaction}/reject', [WebPageController::class, 'rejectPendingTransaction'])->name('transaksi.pending.reject');
 });
 
 require __DIR__.'/auth.php';

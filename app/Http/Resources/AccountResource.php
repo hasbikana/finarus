@@ -17,6 +17,7 @@ class AccountResource extends JsonResource
             'account_number' => $this->account_number,
             'balance' => (float) $this->balance,
             'logo' => $this->logo,
+            'email_scopes' => $this->email_scopes ?? [],
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
